@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, RefreshCw, Trash2, MessageSquare, Save } from 'lucide-react';
+import { Settings, RefreshCw, Trash2, MessageSquare } from 'lucide-react';
 import PreferencesModal from './PreferencesModal';
 import SessionManager from './SessionManager';
 
@@ -11,7 +11,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  onClose, 
   isConnected,
   onReconnect, 
   onClearHistory 

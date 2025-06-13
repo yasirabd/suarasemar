@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Loader2, Volume2, VolumeX, PhoneOff, Phone } from 'lucide-react';
-import { useInterval } from '../utils/hooks';
 import BackgroundStars from './BackgroundStars';
 import AssistantOrb from './AssistantOrb';
-import websocketService, { MessageType, ConnectionState } from '../services/websocket';
+import websocketService, { ConnectionState } from '../services/websocket';
 import audioService, { AudioEvent, AudioState } from '../services/audio';
 
 // Assistant state type
@@ -15,7 +14,7 @@ const ChatInterface: React.FC = () => {
   const [previousAssistantState, setPreviousAssistantState] = useState<AssistantState>('idle');
   const [isConnected, setIsConnected] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [response, setResponse] = useState('');
+  const [, setResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
   const [showConnectedStatus, setShowConnectedStatus] = useState(false);
@@ -215,7 +214,7 @@ const ChatInterface: React.FC = () => {
       setAssistantState('speaking');
     };
     
-    const handlePlaybackEnd = (data: any) => {
+    const handlePlaybackEnd = (_data: any) => {
       // Add a small debounce to ensure we're really done
       setTimeout(() => {
         // Double-check we're not still speaking when setting idle
