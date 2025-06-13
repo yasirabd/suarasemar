@@ -415,8 +415,7 @@ const ChatInterface: React.FC = () => {
       const timer = setTimeout(() => {
         // When timer fires, check if we're still in a state where a follow-up makes sense
         // If we've moved to processing, speaking, or greeting in the meantime, we should abort
-        if (assistantState === 'processing' || assistantState === 'speaking' || 
-            assistantState === 'greeting' || preventFollowUp) {
+        if (preventFollowUp) {
           console.log(`Follow-up timer fired but state is now ${assistantState} - aborting follow-up`);
           return;
         }
@@ -503,8 +502,8 @@ const ChatInterface: React.FC = () => {
           // Stop recording if already recording
           audioService.stopRecording();
         } else {
-          // Prevent recording during processing or vision_processing states
-          if (assistantState === 'processing' || assistantState === 'vision_processing') {
+          // Prevent recording during processing state
+          if (assistantState === 'processing') {
             console.log(`Cannot start recording during ${assistantState} state`);
             return;
           }
