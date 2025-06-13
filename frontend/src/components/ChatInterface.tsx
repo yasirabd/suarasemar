@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Loader2, Volume2, VolumeX, PhoneOff, Phone, Eye } from 'lucide-react';
+import { Mic, Loader2, Volume2, VolumeX, PhoneOff, Phone } from 'lucide-react';
 import { useInterval } from '../utils/hooks';
 import BackgroundStars from './BackgroundStars';
 import AssistantOrb from './AssistantOrb';
@@ -7,7 +7,7 @@ import websocketService, { MessageType, ConnectionState } from '../services/webs
 import audioService, { AudioEvent, AudioState } from '../services/audio';
 
 // Assistant state type
-type AssistantState = 'idle' | 'greeting' | 'listening' | 'processing' | 'speaking' | 'vision_file' | 'vision_processing' | 'vision_asr';
+type AssistantState = 'idle' | 'greeting' | 'listening' | 'processing' | 'speaking';
 
 const ChatInterface: React.FC = () => {
   // State management
@@ -20,12 +20,7 @@ const ChatInterface: React.FC = () => {
   const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
   const [showConnectedStatus, setShowConnectedStatus] = useState(false);
   const [callActive, setCallActive] = useState(true);
-  const [visionEnabled, setVisionEnabled] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  
-  // Vision-related state
-  const [isVisionContext, setIsVisionContext] = useState(false);
-  const [visionImageContext, setVisionImageContext] = useState<string | null>(null);
   
   // End call toast notification
   const [showEndCallToast, setShowEndCallToast] = useState(false);
@@ -43,110 +38,6 @@ const ChatInterface: React.FC = () => {
   
   // Timeout to prevent getting stuck in listening state if Whisper doesn't process the audio
   const [listeningTimeout, setListeningTimeout] = useState<NodeJS.Timeout | null>(null);
-  
-  // Handle the vision button action
-  const handleVisionAction = () => {
-    // Prevent action if already in a protected state
-    if (assistantState === 'processing' || 
-        assistantState === 'vision_processing' || 
-        assistantState === 'greeting') {
-      console.log(`Cannot activate vision in ${assistantState} state`);
-      return;
-    }
-    
-    // Reset any existing vision context
-    setIsVisionContext(false);
-    setVisionImageContext(null);
-    
-    // Transition to vision file state
-    setAssistantState('vision_file');
-    
-    console.log('Entering vision file state');
-  };
-  
-  // Handle file selection for vision
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    // Check file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      setError("File too large. Maximum size is 5MB.");
-      return;
-    }
-    
-    // Read file as base64
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64Data = reader.result?.toString().split(',')[1] || '';
-      
-      // Move to processing state
-      setAssistantState('vision_processing');
-      
-      // Send image to server
-      websocketService.sendVisionImage(base64Data);
-    };
-    
-    reader.readAsDataURL(file);
-  };
-  
-  // Add timeout for vision_file state
-  useEffect(() => {
-    if (assistantState === 'vision_file') {
-      // Start a 10-second timeout
-      const timeout = setTimeout(() => {
-        console.log('Vision file timeout expired, returning to idle');
-        setAssistantState('idle');
-      }, 10000); // 10 seconds
-      
-      return () => clearTimeout(timeout);
-    }
-  }, [assistantState]);
-  
-  // Listen for vision processing events
-  useEffect(() => {
-    // Handle vision processing updates
-    const handleVisionProcessing = (data: any) => {
-      if (data && data.status) {
-        console.log(`Vision processing: ${data.status}`);
-      }
-    };
-    
-    // Handle vision processing complete
-    const handleVisionReady = (data: any) => {
-      if (data && data.context) {
-        console.log('Vision processing complete');
-        setVisionImageContext(data.context);
-        setIsVisionContext(true);
-        
-        // Move to vision ASR state
-        setAssistantState('vision_asr');
-      }
-    };
-    
-    // Handle file upload result
-    const handleVisionFileResult = (data: any) => {
-      if (data && data.success) {
-        console.log('Vision file upload successful');
-      } else {
-        console.log('Vision file upload failed');
-        setError("Failed to upload image. Please try again.");
-        setAssistantState('idle');
-      }
-    };
-    
-    // Add vision event listeners
-    websocketService.addEventListener(MessageType.VISION_PROCESSING as any, handleVisionProcessing);
-    websocketService.addEventListener(MessageType.VISION_READY as any, handleVisionReady);
-    websocketService.addEventListener(MessageType.VISION_FILE_UPLOAD_RESULT as any, handleVisionFileResult);
-    
-    return () => {
-      // Remove listeners
-      websocketService.removeEventListener(MessageType.VISION_PROCESSING as any, handleVisionProcessing);
-      websocketService.removeEventListener(MessageType.VISION_READY as any, handleVisionReady);
-      websocketService.removeEventListener(MessageType.VISION_FILE_UPLOAD_RESULT as any, handleVisionFileResult);
-    };
-  }, []);
   
   // Handle ending a call
   const handleEndCall = () => {
@@ -232,47 +123,6 @@ const ChatInterface: React.FC = () => {
     setIsMuted(newMuteState);
     console.log(`Microphone ${newMuteState ? 'muted' : 'unmuted'}`);
   };
-  
-  // Listen for vision settings and updates
-  useEffect(() => {
-    const handleVisionSettings = (data: any) => {
-      if (data && data.enabled !== undefined) {
-        console.log(`Received vision settings: enabled=${data.enabled}`);
-        setVisionEnabled(data.enabled);
-      }
-    };
-    
-    const handleVisionSettingsUpdated = (data: any) => {
-      if (data && data.success) {
-        // When successful update occurs, request the latest settings
-        console.log('Vision settings updated, requesting latest settings');
-        websocketService.getVisionSettings();
-      }
-    };
-    
-    const handleConnectionOpen = () => {
-      console.log('WebSocket connected, requesting vision settings');
-      websocketService.getVisionSettings();
-    };
-    
-    // Add all event listeners
-    websocketService.addEventListener(MessageType.VISION_SETTINGS as any, handleVisionSettings);
-    websocketService.addEventListener(MessageType.VISION_SETTINGS_UPDATED as any, handleVisionSettingsUpdated);
-    websocketService.addEventListener('open', handleConnectionOpen);
-    
-    // ALSO check if we're already connected, and if so, request settings immediately
-    if (websocketService.getConnectionState() === ConnectionState.CONNECTED) {
-      console.log('Already connected, requesting vision settings immediately');
-      websocketService.getVisionSettings();
-    }
-    
-    return () => {
-      // Clean up all listeners
-      websocketService.removeEventListener(MessageType.VISION_SETTINGS as any, handleVisionSettings);
-      websocketService.removeEventListener(MessageType.VISION_SETTINGS_UPDATED as any, handleVisionSettingsUpdated);
-      websocketService.removeEventListener('open', handleConnectionOpen);
-    };
-  }, []);
 
   // Set up event listeners (in a separate effect so the delay doesn't affect listeners)
   useEffect(() => {
@@ -315,8 +165,8 @@ const ChatInterface: React.FC = () => {
           return;
         }
         
-        // Check if we're in processing, vision_processing, or greeting state - all should ignore voice
-        if (assistantState === 'processing' || assistantState === 'vision_processing' || assistantState === 'greeting') {
+        // Check if we're in processing or greeting state - all should ignore voice
+        if (assistantState === 'processing' || assistantState === 'greeting') {
           // Only log without changing state - effectively ignoring voice detection
           console.log(`Voice detected during ${assistantState} state (energy: ${data.energy.toFixed(4)}), ignoring`);
         } 
@@ -324,12 +174,6 @@ const ChatInterface: React.FC = () => {
         else if (assistantState === 'idle' || assistantState === 'speaking') {
           console.log(`Voice detected (VAD), energy: ${data.energy.toFixed(4)}, changing state to listening`);
           setAssistantState('listening');
-        }
-        // Special handling for vision_asr state
-        else if (assistantState === 'vision_asr') {
-          console.log(`Voice detected during vision_asr state (energy: ${data.energy.toFixed(4)}), already in vision-aware listening`);
-          // Stay in vision_asr state - it's already the correct visual state for vision context
-          // No state change needed
         }
       }
     };
@@ -415,9 +259,7 @@ const ChatInterface: React.FC = () => {
     // Set up audio service event listeners
     audioService.addEventListener(AudioEvent.RECORDING_START, () => {
       // Only change to listening state if we're not in a protected state
-      if (assistantState !== 'processing' && 
-          assistantState !== 'vision_processing' && 
-          assistantState !== 'vision_asr') {
+      if (assistantState !== 'processing') {
         setAssistantState('listening');
       } else {
         console.log(`Recording started during ${assistantState} state, maintaining state`);
@@ -485,7 +327,6 @@ const ChatInterface: React.FC = () => {
     // Inform audio service about all protected states
     audioService.setProcessingState(assistantState === 'processing');
     audioService.setGreetingState(assistantState === 'greeting');
-    audioService.setVisionProcessingState(assistantState === 'vision_processing');
     
     // Cancel listening timeout when moving to processing, speaking, or greeting
     if (assistantState === 'processing' || assistantState === 'speaking' || assistantState === 'greeting') {
@@ -596,8 +437,7 @@ const ChatInterface: React.FC = () => {
           // 4. Audio must be inactive (not recording or playing)
           // 5. Follow-ups must not be prevented by recent call end
           if (
-            assistantState === 'idle' && 
-            assistantState !== 'processing' &&  // Double-check processing state
+            assistantState === 'idle' &&
             !potentialSpeechActivity &&  // No audio activity (even low-level background noise)
             isConnected && 
             audioState === AudioState.INACTIVE &&
@@ -787,18 +627,6 @@ const ChatInterface: React.FC = () => {
               </div>
             </div>
             
-            {/* Vision ASR message */}
-            <div className={`
-              absolute inset-x-0 flex items-center justify-center
-              transition-all duration-500
-              ${assistantState === 'vision_asr' ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
-            `}>
-              <div className="flex items-center gap-2 bg-emerald-900/30 backdrop-blur-sm px-4 py-2 rounded-full border border-emerald-400/20">
-                <Mic className="w-4 h-4 text-emerald-400/70 animate-pulse" />
-                <span className="text-emerald-400/70 text-sm">Ask...</span>
-              </div>
-            </div>
-            
             {/* Disconnected status */}
             <div className={`
               absolute inset-x-0 flex items-center justify-center bottom-0
@@ -848,57 +676,6 @@ const ChatInterface: React.FC = () => {
         {/* Audio input controls */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3">
         {/* Audio visualizer would go here */}
-        
-        {/* Vision button - Only shown when enabled */}
-        {visionEnabled && (
-          <button
-            onClick={handleVisionAction}
-            className={`
-              p-4 rounded-full transition-all duration-300
-              ${assistantState === 'vision_file'
-                ? 'bg-sky-300/20 hover:bg-sky-300/30 border-sky-300/50' // Sky blue for vision file state
-                : assistantState === 'vision_asr'
-                  ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-400/50' // Emerald for vision ASR
-                : assistantState === 'vision_processing'
-                  ? 'bg-teal-500/20 hover:bg-teal-500/30 border-teal-400/50 cursor-not-allowed' // Teal for vision processing
-                  : assistantState === 'listening' 
-                    ? 'bg-indigo-500/20 hover:bg-indigo-500/30 border-indigo-400/50' // Purple-blue for listening
-                    : assistantState === 'greeting'
-                      ? 'bg-indigo-500/20 hover:bg-indigo-500/30 border-indigo-400/50 cursor-not-allowed' // Purple-blue for greeting
-                      : assistantState === 'processing'
-                        ? 'bg-slate-900/50 border-purple-400/30 cursor-not-allowed' // Purple for processing (disabled)
-                        : assistantState === 'speaking'
-                          ? 'bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-400/30' // Purple-blue for speaking
-                          : isFirstInteraction
-                            ? 'bg-indigo-900/20 border-indigo-400/10 cursor-not-allowed opacity-50' // Disabled state before call starts
-                            : 'bg-indigo-900/30 hover:bg-indigo-900/40 border-indigo-400/30' // Default for idle
-              }
-              border-2 shadow-lg backdrop-blur-md transform transition-all duration-300
-              hover:scale-105
-            `}
-            disabled={!isConnected || assistantState === 'processing' || assistantState === 'greeting' || 
-                    assistantState === 'vision_processing' || isFirstInteraction}
-          >
-            <Eye className={`w-6 h-6 
-              ${assistantState === 'vision_file'
-                ? 'text-sky-300' // Sky blue for vision file state
-                : assistantState === 'vision_asr'
-                  ? 'text-emerald-400' // Emerald for vision ASR
-                : assistantState === 'vision_processing'
-                  ? 'text-teal-400 animate-pulse' // Teal animate for vision processing
-                  : assistantState === 'listening' 
-                    ? 'text-indigo-400' // indigo for listening
-                    : assistantState === 'greeting'
-                      ? 'text-indigo-400' // indigo for greeting
-                      : assistantState === 'processing'
-                        ? 'text-purple-400/70' // Purple for processing
-                        : assistantState === 'speaking'
-                          ? 'text-indigo-400' // indigo for speaking
-                          : 'text-sky-300' // Default for idle - matching vision_file blue/cyan
-              }`} 
-            />
-          </button>
-        )}
         
         {/* Microphone button or End Call button */}
         <button
@@ -980,62 +757,7 @@ const ChatInterface: React.FC = () => {
           )}
         </button>
       </div>
-      
-      {/* Vision file upload positioned below orb */}
-      {assistantState === 'vision_file' && (
-        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 w-full max-w-sm mx-auto z-30">
-          <div className="bg-slate-900/95 shadow-xl border border-sky-300/20 p-6 rounded-xl backdrop-blur-md">
-            <h3 className="text-lg font-medium text-sky-100 mb-4 flex items-center gap-2">
-              <Eye className="w-5 h-5 text-sky-300" />
-              <span>Select an image to analyse</span>
-            </h3>
-            
-            <div 
-              className="border-2 border-dashed border-sky-300/30 rounded-lg p-6 text-center hover:border-sky-300/60 transition-colors cursor-pointer bg-slate-800/70"
-              onClick={() => document.getElementById('vision-file-input')?.click()}
-            >
-              <p className="text-slate-300 mb-2">Click to browse or drag and drop</p>
-              <p className="text-xs text-slate-400">Supports JPG, PNG, GIF up to 5MB</p>
-            </div>
-            
-            <input 
-              id="vision-file-input"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileSelected}
-            />
-            
-            <div className="flex justify-end mt-4 gap-3">
-              <button 
-                onClick={() => setAssistantState('idle')}
-                className="px-4 py-2 bg-sky-300/10 hover:bg-sky-300/20 text-sky-100 rounded-md border border-sky-300/20"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Vision processing message - positioned exactly like file upload */}
-      {assistantState === 'vision_processing' && (
-        <div className="absolute bottom-[175px] left-1/2 -translate-x-1/2 w-full max-w-sm mx-auto z-30">
-          <div className="bg-slate-900/95 shadow-xl border border-sky-300/20 p-6 rounded-xl backdrop-blur-md text-center">
-            <div className="flex justify-center mb-4">
-              <Loader2 className="w-8 h-8 text-sky-300 animate-spin" />
-            </div>
-            <h3 className="text-lg font-medium text-sky-100 mb-2">
-              Analysing image...
-            </h3>
-            <p className="text-sm text-slate-300">
-              Processing your image with advanced AI vision capabilities
-            </p>
-          </div>
-        </div>
-      )}
-      
-      
+          
       {/* Error toast */}
       {error && (
         <div className="fixed top-4 right-4 bg-red-900/60 text-white p-3 rounded-lg shadow-lg backdrop-blur-sm max-w-xs">

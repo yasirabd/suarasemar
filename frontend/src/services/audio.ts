@@ -102,16 +102,6 @@ export class AudioService {
     this.isGreeting = isGreeting;
     console.log(`Greeting state set to: ${isGreeting}`);
   }
-  
-  /**
-   * Set vision processing state from UI
-   * This prevents interrupts during vision processing
-   */
-  public setVisionProcessingState(isVisionProcessing: boolean): void {
-    this.isVisionProcessing = isVisionProcessing;
-    console.log(`Vision processing state set to: ${isVisionProcessing}`);
-  }
-  
 
   /**
    * Initialize the audio context

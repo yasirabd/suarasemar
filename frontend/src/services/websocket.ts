@@ -34,16 +34,6 @@ export enum MessageType {
   LIST_SESSIONS_RESULT = "list_sessions_result",
   DELETE_SESSION = "delete_session",
   DELETE_SESSION_RESULT = "delete_session_result",
-  
-  // Vision feature message types
-  VISION_SETTINGS = "vision_settings",
-  VISION_SETTINGS_UPDATED = "vision_settings_updated",
-  
-  // Vision processing message types
-  VISION_FILE_UPLOAD = "vision_file_upload",
-  VISION_FILE_UPLOAD_RESULT = "vision_file_upload_result", 
-  VISION_PROCESSING = "vision_processing",
-  VISION_READY = "vision_ready"
 }
 
 // Session interface
@@ -83,12 +73,7 @@ type WebSocketEventType =
   | 'save_session_result'
   | 'load_session_result'
   | 'list_sessions_result'
-  | 'delete_session_result'
-  | 'vision_settings'
-  | 'vision_settings_updated'
-  | 'vision_file_upload_result'
-  | 'vision_processing'
-  | 'vision_ready';
+  | 'delete_session_result';
 
 // WebSocket state
 export enum ConnectionState {
@@ -286,37 +271,6 @@ export class WebSocketService {
     // Send explicit string type expected by backend
     return this.send("update_user_profile" as any, {
       name
-    });
-  }
-  
-  /**
-   * Request the current vision settings
-   */
-  public getVisionSettings(): boolean {
-    // Send explicit string type expected by backend
-    return this.send("get_vision_settings" as any);
-  }
-  
-  /**
-   * Update the vision settings
-   * 
-   * @param enabled Whether vision is enabled
-   */
-  public updateVisionSettings(enabled: boolean): boolean {
-    // Send explicit string type expected by backend
-    return this.send("update_vision_settings" as any, {
-      enabled
-    });
-  }
-  
-  /**
-   * Send an image for vision processing
-   * 
-   * @param imageData Base64-encoded image data
-   */
-  public sendVisionImage(imageData: string): boolean {
-    return this.send(MessageType.VISION_FILE_UPLOAD, {
-      image_data: imageData
     });
   }
   

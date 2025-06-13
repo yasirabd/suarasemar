@@ -160,18 +160,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
       
-      <div className="p-4 text-xs text-slate-500 border-t border-slate-800/50">
-        <p>Vocalis v1.5.0</p>
-        <a 
-          href="https://github.com/lex-au" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-slate-500 hover:text-emerald-400 transition-colors"
-        >
-          github.com/lex-au
-        </a>
-      </div>
-      
       {/* Preferences Modal */}
       <PreferencesModal 
         isOpen={isPreferencesOpen}
