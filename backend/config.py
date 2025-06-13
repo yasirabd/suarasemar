@@ -29,9 +29,9 @@ DIALOGFLOW_LANGUAGE_CODE = os.getenv("DIALOGFLOW_LANGUAGE_CODE")
 # TTS_VOICE = os.getenv("TTS_VOICE", "tara")
 # TTS_FORMAT = os.getenv("TTS_FORMAT", "wav")
 
-# # WebSocket Server Configuration
-# WEBSOCKET_HOST = os.getenv("WEBSOCKET_HOST", "0.0.0.0")
-# WEBSOCKET_PORT = int(os.getenv("WEBSOCKET_PORT", 8000))
+# WebSocket Server Configuration
+WEBSOCKET_HOST = os.getenv("WEBSOCKET_HOST", "0.0.0.0")
+WEBSOCKET_PORT = int(os.getenv("WEBSOCKET_PORT", 8000))
 
 # # Audio Processing
 # VAD_THRESHOLD = float(os.getenv("VAD_THRESHOLD", 0.5))
@@ -55,8 +55,8 @@ def get_config() -> Dict[str, Any]:
         # "tts_model": TTS_MODEL,
         # "tts_voice": TTS_VOICE,
         # "tts_format": TTS_FORMAT,
-        # "websocket_host": WEBSOCKET_HOST,
-        # "websocket_port": WEBSOCKET_PORT,
+        "websocket_host": WEBSOCKET_HOST,
+        "websocket_port": WEBSOCKET_PORT,
         # "vad_threshold": VAD_THRESHOLD,
         # "vad_buffer_size": VAD_BUFFER_SIZE,
         # "audio_sample_rate": AUDIO_SAMPLE_RATE,
