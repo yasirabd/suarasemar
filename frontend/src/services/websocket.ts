@@ -98,7 +98,7 @@ export class WebSocketService {
   private reconnectAttempts: number;
   private maxReconnectAttempts: number;
   private listeners: EventListener[] = [];
-  private pingInterval: number | null = null;
+  private pingInterval: NodeJS.Timeout | null = null;
   private connectionState: ConnectionState = ConnectionState.DISCONNECTED;
   
   // Track states that should prevent interrupt signals
